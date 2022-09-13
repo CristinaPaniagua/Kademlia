@@ -38,11 +38,13 @@ func (network *Network) SendPingMessage(contact *Contact) {
 }
 
 func (network *Network) SendFindContactMessage(contact *Contact) ContactCandidates {
+	// TODO
 	return ContactCandidates{}
 }
 
-func (network *Network) SendFindDataMessage(hash string) {
+func (network *Network) SendFindDataMessage(hash string) (FindValueReply, bool, error) {
 	// TODO
+	return FindValueReply{}, false, nil
 }
 
 func (network *Network) SendStoreMessage(data []byte) {

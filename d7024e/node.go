@@ -37,25 +37,19 @@ type FindValueReply struct {
 	Contacts []Contact
 }
 
-func (node *Node) FindValue(contact *Contact, key string) (FindValueReply, error) {
-
+func (node *Node) FindValue(key string) (FindValueReply, error) {
 	reply := FindValueReply{}
-	if contact == nil {
-		return reply, errors.New("couldn't hash IP address")
-
+	val, ok := node.st.get(key)
+	if ok {
+		reply.Val = val
+		return reply, nil
 	} else {
-		val, ok := node.st.get(key)
-		if ok {
-			reply.Val = val
-			return reply, nil
-		} else {
-
-			closestContacts, er := node.FindNode(contact)
-			reply.Contacts = closestContacts.contacts
-			return reply, er
-		}
-
+		contact := NewContact(NewKademliaID(key), "")
+		closestContacts, er := node.FindNode(&contact)
+		reply.Contacts = closestContacts.contacts
+		return reply, er
 	}
+
 }
 
 func (node *Node) StoreKV(key string, value []byte) {

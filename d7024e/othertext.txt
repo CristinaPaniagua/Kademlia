@@ -1,0 +1,46 @@
+go func() {
+					n := Network{}
+					if !ExistsIn(n.receiver, contactList.contacts) {
+
+						responseList := n.SendFindContactMessage(target)
+						contacted = append(contacted, contactList.contacts[i].ID.String())
+						//if timeout == true {
+						//TODO remove if do not answer
+						//}
+						contactList.Sort()  //order the list in starting with the closest
+						responseList.Sort() //order the list in starting with the closest
+						for j := 0; j < alpha; j++ {
+							for l := 0; l < contactList.Len(); l++ {
+								// for the alpha contacts from the response, if they are closer than the one in the list we subsitude
+								if responseList.GetContacts(responseList.Len())[j].Less(&contactList.GetContacts(contactList.Len())[l]) {
+									contactList.contacts[l] = responseList.contacts[i]
+								}
+
+							}
+						}
+
+					}
+				}()
+
+
+
+func (node *Node) FindValue(contact *Contact, key string) (FindValueReply, error) {
+
+	reply := FindValueReply{}
+	if contact == nil {
+		return reply, errors.New("couldn't hash IP address")
+
+	} else {
+		val, ok := node.st.get(key)
+		if ok {
+			reply.Val = val
+			return reply, nil
+		} else {
+
+			closestContacts, er := node.FindNode(contact)
+			reply.Contacts = closestContacts.contacts
+			return reply, er
+		}
+
+	}
+}
