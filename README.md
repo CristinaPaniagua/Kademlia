@@ -1,2 +1,3 @@
-# Kademlia
-Kademlia implementaiton in go
+# Kademlia 
+GO implementation
+
