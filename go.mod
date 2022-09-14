@@ -1,4 +1,4 @@
-module github.com/CristinaPaniagua/Kademlia
+module Kademlia
 
 go 1.19
 
