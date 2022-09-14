@@ -37,17 +37,20 @@ type FindValueReply struct {
 	Contacts []Contact
 }
 
-func (node *Node) FindValue(key string) (FindValueReply, error) {
+func (node *Node) FindValue(key string) (FindValueReply, bool, error) {
 	reply := FindValueReply{}
 	val, ok := node.st.get(key)
+	found := false
 	if ok {
 		reply.Val = val
-		return reply, nil
+		found = true
+		return reply, found, nil
+
 	} else {
 		contact := NewContact(NewKademliaID(key), "")
 		closestContacts, er := node.FindNode(&contact)
 		reply.Contacts = closestContacts.contacts
-		return reply, er
+		return reply, found, er
 	}
 
 }

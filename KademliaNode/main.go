@@ -13,9 +13,10 @@ func main() {
 	fmt.Println("Node started")
 	//take arguments
 	//args := os.Args[1:]
-
+	contact := NewContact()
 	node := Node{}
-	//REDO
+
+	//REDO WITH MY METHODS
 	rl, err := readline.New("> ")
 	if err != nil {
 		panic(err)

@@ -47,6 +47,14 @@ func (candidates *ContactCandidates) Append(contacts []Contact) {
 
 // remove an contact from the ContactCandidates
 func (candidates *ContactCandidates) RemoveContact(contact Contact) {
+	//func (n *shortList) RemoveNode(node *NetworkNode) {
+	//		for i := 0; i < n.Len(); i++ {
+	//			if bytes.Compare(n.Nodes[i].ID, node.ID) == 0 {
+	//				n.Nodes = append(n.Nodes[:i], n.Nodes[i+1:]...)
+	//				return
+	//			}
+	//		}
+	//	}
 
 }
 
