@@ -1,11 +1,10 @@
-module Kademlia
+module github.com/CristinaPaniagua/Kademlia
 
 go 1.19
 
 require github.com/go-ping/ping v1.1.0
 
 require (
-	github.com/CristinaPaniagua/Kademlia v0.0.0-20220920085309-ed4c7d0de491
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/gorilla/mux v1.8.0
 	golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4 // indirect

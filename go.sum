@@ -1,5 +1,3 @@
-github.com/CristinaPaniagua/Kademlia v0.0.0-20220920085309-ed4c7d0de491 h1:B+8H16lFOzulLHsbtOHr2lAqwkDIEjOuxUGX5uN1Ao0=
-github.com/CristinaPaniagua/Kademlia v0.0.0-20220920085309-ed4c7d0de491/go.mod h1:sv0aucryfEmw3O7pK0s7i1CtsYwLRZZw5WMzkra2/a4=
 github.com/go-ping/ping v1.1.0 h1:3MCGhVX4fyEUuhsfwPrsEdQw6xspHkv5zHsiSoDFZYw=
 github.com/go-ping/ping v1.1.0/go.mod h1:xIFjORFzTxqIV/tDVGO4eDy/bLuSyawEeojSm3GfRGk=
 github.com/google/uuid v1.2.0 h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=
