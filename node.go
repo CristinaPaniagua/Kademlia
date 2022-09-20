@@ -18,11 +18,11 @@ type Node struct {
 	st        Store
 }
 
-func newNode(id *KademliaID, address string, port string, rt *RoutingTable, st Store) Node {
+func NewNode(id *KademliaID, address string, port string, rt *RoutingTable, st Store) Node {
 	return Node{id, address, port, rt, st}
 }
 
-func (node *Node) runRCP() {
+func (node *Node) RunRCP() {
 
 	address := node.IPAddress + ":" + node.port
 	// Set up a listener
