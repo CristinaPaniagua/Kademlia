@@ -1,4 +1,4 @@
-package d7024e
+package Kademlia
 
 type Store struct {
 	kv map[string][]byte //key-value store

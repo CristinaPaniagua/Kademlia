@@ -1,9 +1,8 @@
-package d7024e
+package Kademlia
 
 import (
 	"fmt"
-	"net"
-	"strconv"
+	"net/rpc"
 
 	"github.com/go-ping/ping"
 )
@@ -13,17 +12,9 @@ type Network struct {
 	receiver *Contact
 }
 
-func Listen(ip string, port int) {
-	address := ip + ":" + strconv.Itoa(port)
-	// Set up a listener
-	ln, err := net.Listen("udp", address)
+func (network *Network) Listen() {
 
-	// check if server was successfully created
-	if err != nil {
-		fmt.Println("The following error occured", err)
-	} else {
-		fmt.Println("The listener object has been created:", ln)
-	}
+	//TODO
 }
 
 func (network *Network) SendPingMessage(contact *Contact) {
@@ -38,13 +29,33 @@ func (network *Network) SendPingMessage(contact *Contact) {
 }
 
 func (network *Network) SendFindContactMessage(contact *Contact) ContactCandidates {
-	// TODO
-	return ContactCandidates{}
+	client, err := rpc.DialHTTP("tcp", network.receiver.Address)
+	if err != nil {
+		fmt.Println("dialing:", err)
+	}
+
+	var reply ContactCandidates
+	err = client.Call("Node.RPCFindNode", contact, &reply)
+	if err != nil {
+		fmt.Println("RCP Find Node:", err)
+	}
+
+	return reply
 }
 
 func (network *Network) SendFindDataMessage(hash string) (FindValueReply, bool, error) {
-	// TODO
-	return FindValueReply{}, false, nil
+	client, err := rpc.DialHTTP("tcp", network.receiver.Address)
+	if err != nil {
+		fmt.Println("dialing:", err)
+	}
+
+	var reply FindValueReply
+	err = client.Call("Node.RPCFindValue", hash, &reply)
+	if err != nil {
+		fmt.Println("RCP Find Node:", err)
+	}
+
+	return reply, reply.found, err
 }
 
 func (network *Network) SendStoreMessage(data []byte) {

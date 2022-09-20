@@ -44,3 +44,16 @@ func (node *Node) FindValue(contact *Contact, key string) (FindValueReply, error
 
 	}
 }
+
+func Listen(ip string, port int) {
+	address := ip + ":" + strconv.Itoa(port)
+	// Set up a listener
+	ln, err := net.Listen("udp", address)
+
+	// check if server was successfully created
+	if err != nil {
+		fmt.Println("The following error occured", err)
+	} else {
+		fmt.Println("The listener object has been created:", ln)
+	}
+}
