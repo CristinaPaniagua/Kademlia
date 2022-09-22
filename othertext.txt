@@ -57,3 +57,119 @@ func Listen(ip string, port int) {
 		fmt.Println("The listener object has been created:", ln)
 	}
 }
+
+
+pinger, err := ping.NewPinger(contact.Address)
+	if err != nil {
+		panic(err)
+	}
+	pinger.Count = 3
+	pinger.Run()                 // blocks until finished
+	stats := pinger.Statistics() // get send/receive/rtt stats
+	fmt.Println(stats)
+
+
+	if err != nil {
+		fmt.Println("The following error occured", err)
+	} else {
+		fmt.Println("The node is running:", ln)
+	}
+
+
+
+func (network *Network) SendPingMessage(contact *Contact) {
+	fmt.Println("Ping to -- " + contact.Address)
+	pinger, err := ping.NewPinger(contact.Address)
+	if err != nil {
+		panic(err)
+	}
+	pinger.Count = 3
+	pinger.Run()                 // blocks until finished
+	stats := pinger.Statistics() // get send/receive/rtt stats
+	pinger.Stop()
+	fmt.Println(stats)
+}
+func UpdateList(list1 []Contact, list2 []Contact) []Contact {
+	updated := []Contact{}
+	a := 0
+	for n := 0; n < len(list1); n++ {
+		for j := a; j < len(list2); j++ {
+			if list2[j].Less(&list1[n]) {
+				updated = append(updated, list2[j])
+			} else {
+				a = j
+				updated = append(updated, list2[n])
+				break
+			}
+
+		}
+
+	}
+
+func TestLookupContact(t *testing.T) {
+
+	//NODE A
+	rt := NewRoutingTable(NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000000"), "127.0.0.1:8007"))
+	rt.AddContact(NewContact(NewKademliaID("FFFFFFF200000000000000000000000000000000"), "127.0.0.1:8010"))
+	rt.AddContact(NewContact(NewKademliaID("1111111100000000000000000000000000000000"), "127.0.0.1:8002"))
+	rt.AddContact(NewContact(NewKademliaID("1111111200000000000000000000000000000000"), "127.0.0.1:8003"))
+	rt.AddContact(NewContact(NewKademliaID("1111111300000000000000000000000000000000"), "127.0.0.1:8004"))
+	rt.AddContact(NewContact(NewKademliaID("1111111400000000000000000000000000000000"), "127.0.0.1:8005"))
+	rt.AddContact(NewContact(NewKademliaID("2111111400000000000000000000000000000000"), "127.0.0.1t:8006"))
+	nodeA := NewNode(NewKademliaID("FFFFFFF100000000000000000000000000000000"), "127.0.0.1", "8080", rt, NewStore())
+	contactA := NodetoContact(&nodeA)
+	contactA.String()
+	// NODE B
+	rtb := NewRoutingTable(NewContact(NewKademliaID("FFFFF22F00000000000000000000000000000000"), "127.0.0.1:8017"))
+	rtb.AddContact(NewContact(NewKademliaID("FFFFEFFF00000000000000000000000000000001"), "127.0.0.1:8011"))
+	rtb.AddContact(NewContact(NewKademliaID("1111121100000000000000000000000000000000"), "127.0.0.1:8012"))
+	rtb.AddContact(NewContact(NewKademliaID("FFFFFFF300000000000000000000000000000000"), "127.0.0.1:8020"))
+	rtb.AddContact(NewContact(NewKademliaID("1111141300000000000000000000000000000000"), "127.0.0.1:8014"))
+	rtb.AddContact(NewContact(NewKademliaID("1111511400000000000000000000000000000000"), "127.0.0.1:8015"))
+	rtb.AddContact(NewContact(NewKademliaID("2111511400000000000000000000000000000000"), "127.0.0.1:8016"))
+	nodeB := NewNode(NewKademliaID("1111111300000000000000000000000000000000"), "127.0.0.1", "8004", rt, NewStore())
+	contactB := NodetoContact(&nodeB)
+	contactB.String()
+	//NODE C
+	rtc := NewRoutingTable(NewContact(NewKademliaID("FFFFFFF400000000000000000000000000000000"), "127.0.0.1:8027"))
+	rtc.AddContact(NewContact(NewKademliaID("FFFFFFFF00000000000000000000000000000001"), "127.0.0.1:8021"))
+	rtc.AddContact(NewContact(NewKademliaID("2111141400000000000000000000000000000000"), "127.0.0.1:8026"))
+	nodeC := NewNode(NewKademliaID("1111111200000000000000000000000000000000"), "127.0.0.1", "8003", rt, NewStore())
+	contactC := NodetoContact(&nodeC)
+	contactC.String()
+	// NODE D
+	rtd := NewRoutingTable(NewContact(NewKademliaID("FFFFFFF400000000000000000000000000000000"), "127.0.0.1:8027"))
+	rtd.AddContact(NewContact(NewKademliaID("FFFFFFF300000000000000000000000000000000"), "127.0.0.1:8020"))
+	rtd.AddContact(NewContact(NewKademliaID("1111141300000000000000000000000000000000"), "127.0.0.1:8014"))
+	rtd.AddContact(NewContact(NewKademliaID("1111511400000000000000000000000000000000"), "127.0.0.1:8015"))
+	rtd.AddContact(NewContact(NewKademliaID("2111511400000000000000000000000000000000"), "127.0.0.1:8016"))
+
+	nodeD := NewNode(NewKademliaID("1111111100000000000000000000000000000000"), "127.0.0.1", "8002", rt, NewStore())
+	contactD := NodetoContact(&nodeD)
+	contactD.String()
+
+	//Running nodes
+
+	fmt.Println("Running node " + nodeA.String())
+	nodeA.RunRCP()
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("Running node " + nodeB.String())
+	nodeB.RunRCP()
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("Running node " + nodeC.String())
+	nodeC.RunRCP()
+	time.Sleep(1 * time.Second)
+
+	fmt.Println("Running node " + nodeD.String())
+	nodeD.RunRCP()
+	time.Sleep(1 * time.Second)
+
+	//TARGET
+	target := NewContact(NewKademliaID("1111111A00000000000000000000000000000000"), "127.0.0.1:8005")
+
+	k := Kademlia{&nodeA}
+	k.LookupContact(&target)
+	fmt.Println("  ")
+}

@@ -12,24 +12,20 @@ const (
 	k     = 20
 )
 
-type Kademlia struct {
-	node *Node
-}
-
 // find the
-func (kademlia *Kademlia) LookupContact(target *Contact) ContactCandidates {
-	me := kademlia.node
-	contactMe := Contact{me.nodeID, me.IPAddress + ":" + me.port, nil}
+func (node *Node) LookupContact(target *Contact) ContactCandidates {
+
+	contactMe := Contact{node.NodeID, node.IPAddress + ":" + node.Port, nil}
 	//List of the nodes already contacted
 	contacted := []string{}
-	contacted = append(contacted, me.nodeID.String())
+	contacted = append(contacted, node.NodeID.String())
 
 	//channel
-	contactChan := make(chan []Contact)
+	contactChan := make(chan ContactCandidates)
 
 	//start point
 	//List for clostest contacts- need to be updated in the loop
-	contactList, err := me.FindNode(target) //first in my own bucket
+	contactList, err := node.FindNode(target) //first in my own bucket
 
 	if err == nil {
 		fmt.Printf("Found %d contacts", contactList.Len())
@@ -38,15 +34,15 @@ func (kademlia *Kademlia) LookupContact(target *Contact) ContactCandidates {
 
 			contactList.Sort() //order the list in starting with the closest
 			//updated list of contacts
-			updatedlist := contactList.contacts
-
+			var updatedCandidates ContactCandidates
+			updatedCandidates.Contacts = contactList.Contacts
 			//get alpha nodes to contact that haven been already
 			nextAlpha := make([]Contact, 0, alpha)
 			found := 0
-			for i := 0; i < contactList.Len(); i++ {
+			for f := 0; f < contactList.Len(); f++ {
 
-				if !ExistsIn(&contactList.contacts[i], contacted) {
-					nextAlpha = append(nextAlpha, contactList.contacts[i])
+				if !ExistsIn(&contactList.Contacts[f], contacted) {
+					nextAlpha = append(nextAlpha, contactList.Contacts[f])
 					found++
 				}
 				if found == alpha {
@@ -55,40 +51,58 @@ func (kademlia *Kademlia) LookupContact(target *Contact) ContactCandidates {
 
 			}
 
-			for i := 0; i < alpha; i++ {
+			fmt.Printf("nextAlpha len= %d \n ", len(nextAlpha))
+			for e := 0; e < len(nextAlpha); e++ {
+				fmt.Println(nextAlpha[e].String() + ", distance:" + nextAlpha[e].distance.String())
+			}
+
+			for i := 0; i < len(nextAlpha); i++ {
 				//send  requests to alpha nodes
-				go func() {
+				go func(ind int) {
 					timeout := false
-					n := Network{&contactMe, &nextAlpha[i]}
+					fmt.Println("Sending message to: " + nextAlpha[ind].String())
+					n := Network{&contactMe, &nextAlpha[ind]}
 					responseList := n.SendFindContactMessage(target) //response of k closests nodes from the node i
-					contacted = append(contacted, nextAlpha[i].ID.String())
+					fmt.Printf("Response list len= %d \n ", len(responseList.Contacts))
+					/*for m := 0; m < len(responseList.Contacts); m++ {
+						fmt.Println(responseList.Contacts[m].String() + ", distance:" + responseList.Contacts[m].distance.String())
+					}*/
+					contacted = append(contacted, nextAlpha[ind].ID.String())
 					if timeout {
-						contactList.RemoveContact(nextAlpha[i])
+						contactList.RemoveContact(nextAlpha[ind])
 					} else {
 						responseList.Sort() //order the list in starting with the closest
 
-						Index := k
+						/*Index := k
 						if responseList.Len() < k {
 							Index = responseList.Len()
 						}
-						contactChan <- responseList.contacts[:Index]
+						fmt.Printf("Response len: %d \n ", Index)
+						*/
+						contactChan <- responseList
 
 					}
 
-				}()
+				}(i)
 			}
 
-			for i := 0; i < alpha; i++ {
+			for d := 0; d < alpha; d++ {
 				//reding the responses from the channel
 				r := <-contactChan
 				//update list
-				updatedlist = UpdateList(updatedlist, r)
+				updatedCandidates = UpdateList(&updatedCandidates, &r)
+				updatedCandidates.CalDistance(*target)
+				updatedCandidates.Sort()
+				fmt.Printf("UpdatedList len= %d \n ", len(updatedCandidates.Contacts))
+				for m := 0; m < len(updatedCandidates.Contacts); m++ {
+					fmt.Println(updatedCandidates.Contacts[m].StringDis())
+				}
 
 			}
 
 			//Compare if the list of contacts hasn't changed
-			if !reflect.DeepEqual(contactList.contacts, updatedlist) {
-				contactList.contacts = updatedlist
+			if !reflect.DeepEqual(contactList.Contacts, updatedCandidates.Contacts) {
+				contactList.Contacts = updatedCandidates.Contacts
 			} else {
 				break
 			}
@@ -99,28 +113,25 @@ func (kademlia *Kademlia) LookupContact(target *Contact) ContactCandidates {
 }
 
 // return an update list with the k closests nodes from two lists already order from closer to farder
-func UpdateList(list1 []Contact, list2 []Contact) []Contact {
-	updated := []Contact{}
-	a := 0
-	for i := 0; i < len(list1); i++ {
-		for j := a; j < len(list2); j++ {
-			if list2[j].Less(&list1[i]) {
-				updated = append(updated, list2[j])
-			} else {
-				a = j
-				updated = append(updated, list2[i])
-				break
-			}
+// WARNING- RESPONSE NOT IN ORDER!!!
+func UpdateList(c1 *ContactCandidates, c2 *ContactCandidates) ContactCandidates {
+	var updated ContactCandidates
+	c1.Append(c2.Contacts)
+	contacts := RemoveDupes(c1.Contacts)
 
-		}
-
+	fmt.Println("after removing????")
+	for m := 0; m < len(contacts); m++ {
+		fmt.Println(contacts[m].StringDis())
 	}
 	//return maximum k elements
 	Index := k
-	if len(updated) < k {
-		Index = len(updated)
+	if len(contacts) < k {
+		Index = len(contacts)
 	}
-	return updated[:Index]
+	fmt.Println(Index)
+	updated.Contacts = contacts[:Index]
+
+	return updated
 }
 
 // EvistsIn retunr true if the contact exists in the list
@@ -136,13 +147,14 @@ func ExistsIn(contact *Contact, Clist []string) bool {
 	return exists
 }
 
-func (kademlia *Kademlia) LookupData(hash string) []byte {
-	me := kademlia.node
-	contactMe := Contact{me.nodeID, me.IPAddress + ":" + me.port, nil}
+/*
+func (node *Node) LookupData(hash string) []byte {
+
+	contactMe := Contact{node.NodeID, node.IPAddress + ":" + node.Port, nil}
 
 	//List of the nodes already contacted
 	contacted := []string{}
-	contacted = append(contacted, me.nodeID.String())
+	contacted = append(contacted, node.NodeID.String())
 
 	//channels
 	contactChan := make(chan []Contact)
@@ -150,7 +162,7 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 
 	//start point
 	//List for clostest contacts- need to be updated in the loop
-	reply, found, err := me.FindValue(hash) //first in my own bucket
+	reply, found, err := node.FindValue(hash) //first in my own bucket
 	if err != nil {
 		//TODO HANDLE ERRROR
 
@@ -164,15 +176,15 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 
 			contactList.Sort() //order the list in starting with the closest
 			//updated list of contacts
-			updatedlist := contactList.contacts
+			updatedlist := contactList.Contacts
 
 			//get alpha nodes to contact that haven been already
 			nextAlpha := make([]Contact, 0, alpha)
 			found := 0
 			for i := 0; i < contactList.Len(); i++ {
 
-				if !ExistsIn(&contactList.contacts[i], contacted) {
-					nextAlpha = append(nextAlpha, contactList.contacts[i])
+				if !ExistsIn(&contactList.Contacts[i], contacted) {
+					nextAlpha = append(nextAlpha, contactList.Contacts[i])
 					found++
 				}
 				if found == alpha {
@@ -183,16 +195,16 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 
 			for i := 0; i < alpha; i++ {
 				//send  requests to alpha nodes
-				go func() {
+				go func(ind int) {
 					timeout := false
-					n := Network{&contactMe, &nextAlpha[i]}
+					n := Network{&contactMe, &nextAlpha[ind]}
 					response, found, _ := n.SendFindDataMessage(hash) //search for the value
-					contacted = append(contacted, nextAlpha[i].ID.String())
+					contacted = append(contacted, nextAlpha[ind].ID.String())
 					if found {
 						valueChan <- response.Val
 					} else {
 						if timeout {
-							contactList.RemoveContact(nextAlpha[i])
+							contactList.RemoveContact(nextAlpha[ind])
 						} else {
 							responseList := ContactCandidates{response.Contacts}
 							responseList.Sort() //order the list in starting with the closest
@@ -201,13 +213,12 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 							if responseList.Len() < k {
 								Index = responseList.Len()
 							}
-							contactChan <- responseList.contacts[:Index]
+							contactChan <- responseList.Contacts[:Index]
 
 						}
 					}
-				}()
+				}(i)
 			}
-
 			for i := 0; i < alpha; i++ {
 				//reding the responses from the channel
 				var r []Contact
@@ -222,8 +233,8 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 			}
 
 			//Compare if the list of contacts hasn't changed
-			if !reflect.DeepEqual(contactList.contacts, updatedlist) {
-				contactList.contacts = updatedlist
+			if !reflect.DeepEqual(contactList.Contacts, updatedlist) {
+				contactList.Contacts = updatedlist
 			} else {
 				return nil
 			}
@@ -232,15 +243,15 @@ func (kademlia *Kademlia) LookupData(hash string) []byte {
 	}
 
 }
+*/
 
-func (kademlia *Kademlia) Store(target *Contact, data []byte) {
-	// me
-	me := kademlia.node
-	contactMe := Contact{me.nodeID, me.IPAddress + ":" + me.port, nil}
+func (node *Node) Store(target *Contact, data []byte) {
+
+	contactMe := Contact{node.NodeID, node.IPAddress + ":" + node.Port, nil}
 	// get k closest contacts to the key
-	contacts := kademlia.LookupContact(target)
+	contacts := node.LookupContact(target)
 	// send STORE request
-	for _, contact := range contacts.contacts {
+	for _, contact := range contacts.Contacts {
 		go func(contact Contact) {
 			n := Network{&contactMe, &contact}
 			n.SendStoreMessage(data)

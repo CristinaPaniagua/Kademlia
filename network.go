@@ -3,13 +3,11 @@ package Kademlia
 import (
 	"fmt"
 	"net/rpc"
-
-	"github.com/go-ping/ping"
 )
 
 type Network struct {
-	sender   *Contact
-	receiver *Contact
+	Sender   *Contact
+	Receiver *Contact
 }
 
 func (network *Network) Listen() {
@@ -17,34 +15,48 @@ func (network *Network) Listen() {
 	//TODO
 }
 
-func (network *Network) SendPingMessage(contact *Contact) {
-	pinger, err := ping.NewPinger(contact.Address)
+func (network *Network) SendPingMessage(contact *Contact) bool {
+	fmt.Println("Ping to -- " + contact.Address)
+	client, err := rpc.DialHTTP("tcp", contact.Address)
 	if err != nil {
-		panic(err)
+		fmt.Println("dialing:", err)
 	}
-	pinger.Count = 3
-	pinger.Run()                 // blocks until finished
-	stats := pinger.Statistics() // get send/receive/rtt stats
-	fmt.Println(stats)
+	var reply Contact
+	err = client.Call("Node.RPCPing", contact, &reply)
+	success := false
+	if err != nil {
+		fmt.Println("RCP Ping:", err)
+	} else {
+		fmt.Printf("Call successful, reply contact: %s\n", reply.String())
+		success = true
+	}
+
+	return success
+
 }
 
-func (network *Network) SendFindContactMessage(contact *Contact) ContactCandidates {
-	client, err := rpc.DialHTTP("tcp", network.receiver.Address)
+func (network *Network) SendFindContactMessage(target *Contact) ContactCandidates {
+	fmt.Println("receiver address " + network.Receiver.Address)
+	client, err := rpc.DialHTTP("tcp", network.Receiver.Address)
 	if err != nil {
 		fmt.Println("dialing:", err)
 	}
 
 	var reply ContactCandidates
-	err = client.Call("Node.RPCFindNode", contact, &reply)
+
+	err = client.Call("Node.RPCFindNode", target, &reply)
+	reply.CalDistance(*target)
 	if err != nil {
 		fmt.Println("RCP Find Node:", err)
+	} else {
+		fmt.Printf("Call successful, reply length: %d\n", reply.Len())
 	}
-
+	client.Close()
 	return reply
 }
 
 func (network *Network) SendFindDataMessage(hash string) (FindValueReply, bool, error) {
-	client, err := rpc.DialHTTP("tcp", network.receiver.Address)
+	client, err := rpc.DialHTTP("tcp", network.Receiver.Address)
 	if err != nil {
 		fmt.Println("dialing:", err)
 	}

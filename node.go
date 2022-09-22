@@ -11,26 +11,58 @@ import (
 )
 
 type Node struct {
-	nodeID    *KademliaID
+	NodeID    *KademliaID
 	IPAddress string
-	port      string
-	rt        *RoutingTable
-	st        Store
+	Port      string
+	Rt        *RoutingTable
+	St        *Store
 }
 
-func NewNode(id *KademliaID, address string, port string, rt *RoutingTable, st Store) Node {
+func NewNode(id *KademliaID, address string, port string, rt *RoutingTable, st *Store) Node {
 	return Node{id, address, port, rt, st}
+}
+
+func NodetoContact(node *Node) Contact {
+	address := node.IPAddress + ":" + node.Port
+	//fmt.Println(address)
+	contact := NewContact(node.NodeID, address)
+	return contact
+}
+
+func (node *Node) JoinNetwork(IPadress string, port string, origin *Contact) *RoutingTable {
+	node.IPAddress = IPadress
+	node.Port = port
+	meContact := NodetoContact(node)
+	routingTable := NewRoutingTable(meContact)
+	routingTable.AddContact(*origin)
+
+	closestContacts := node.LookupContact(&meContact)
+
+	for _, contact := range closestContacts.Contacts {
+		routingTable.AddContact(contact)
+	}
+
+	return routingTable
 }
 
 func (node *Node) RunRCP() {
 
-	address := node.IPAddress + ":" + node.port
+	address := node.IPAddress + ":" + node.Port
+	fmt.Println("Node address: " + address)
+
 	// Set up a listener
-
 	rpc.Register(node)
+	//to use multiple times
+	oldMux := http.DefaultServeMux
+	mux := http.NewServeMux()
+	http.DefaultServeMux = mux
+	//---
 	rpc.HandleHTTP()
-	ln, err := net.Listen("tcp", address)
+	//---
+	http.DefaultServeMux = oldMux
 
+	ln, err := net.Listen("tcp", address)
+	//fmt.Println(ln.Addr().String())
 	// check if server was successfully created
 	if err != nil {
 		fmt.Println("The following error occured", err)
@@ -38,7 +70,23 @@ func (node *Node) RunRCP() {
 		fmt.Println("The node is running:", ln)
 	}
 
-	go http.Serve(ln, nil)
+	go http.Serve(ln, mux)
+
+}
+
+func (node *Node) RPCPing(contact *Contact, reply *Contact) error {
+	fmt.Printf("Ping from %s", contact.String())
+	if contact == nil {
+		return errors.New("couldn't hash IP address")
+	}
+	//add to the routing table
+	node.Rt.AddContact(*contact)
+	//TODO: UPDATE K-bucket
+	//response
+	contactMe := NodetoContact(node)
+	fmt.Println(contactMe.String())
+	*reply = contactMe
+	return nil
 
 }
 
@@ -48,19 +96,19 @@ func (node *Node) FindNode(contact *Contact) (ContactCandidates, error) {
 	if contact == nil {
 		return closeCandidates, errors.New("couldn't hash IP address")
 	} else {
-		closeContacts = node.rt.FindClosestContacts(contact.ID, k)
+		closeContacts = node.Rt.FindClosestContacts(contact.ID, k)
 
 	}
-
+	fmt.Println("closest contacts from the node: " + node.String())
 	for i := range closeContacts {
-		fmt.Println(closeContacts[i].String())
+		fmt.Println(closeContacts[i].StringDis())
 	}
-	closeCandidates.contacts = closeContacts
+	closeCandidates.Contacts = closeContacts
 	return closeCandidates, nil
 }
 
 func (node *Node) RPCFindNode(contact *Contact, reply *ContactCandidates) error {
-
+	fmt.Println(" searching contact:" + contact.String())
 	closeCandidates, err := node.FindNode(contact)
 	*reply = closeCandidates
 	return err
@@ -74,7 +122,7 @@ type FindValueReply struct {
 
 func (node *Node) FindValue(key string) (FindValueReply, bool, error) {
 	reply := FindValueReply{}
-	val, ok := node.st.get(key)
+	val, ok := node.St.Get(key)
 	found := false
 	if ok {
 		reply.Val = val
@@ -85,7 +133,7 @@ func (node *Node) FindValue(key string) (FindValueReply, bool, error) {
 	} else {
 		contact := NewContact(NewKademliaID(key), "")
 		closestContacts, er := node.FindNode(&contact)
-		reply.Contacts = closestContacts.contacts
+		reply.Contacts = closestContacts.Contacts
 		return reply, found, er
 	}
 
@@ -99,17 +147,17 @@ func (node *Node) RPCFindValue(key string, reply *FindValueReply) error {
 }
 
 func (node *Node) StoreKV(key string, value []byte) {
-	node.st.add(key, value)
+	node.St.Add(key, value)
 }
 
 func (node *Node) RPCStoreKV(key string, value []byte, reply bool) error {
-	node.st.add(key, value)
+	node.St.Add(key, value)
 	reply = true
 	return nil
 }
 
 func (node *Node) Ping(target *Node) {
-	pinger, err := ping.NewPinger(target.IPAddress + ":" + target.port)
+	pinger, err := ping.NewPinger(target.IPAddress + ":" + target.Port)
 	if err != nil {
 		panic(err)
 	}
@@ -117,4 +165,7 @@ func (node *Node) Ping(target *Node) {
 	pinger.Run()                 // blocks until finished
 	stats := pinger.Statistics() // get send/receive/rtt stats
 	fmt.Println(stats)
+}
+func (node *Node) String() string {
+	return fmt.Sprintf(`node("%s", "%s", "%s", routing table and store not printed)`, node.NodeID.String(), node.IPAddress, node.Port)
 }

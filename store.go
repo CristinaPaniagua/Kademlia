@@ -11,12 +11,12 @@ func NewStore() *Store {
 	return store
 }
 
-func (store *Store) get(key string) ([]byte, bool) {
+func (store *Store) Get(key string) ([]byte, bool) {
 	if val, ok := store.kv[key]; ok {
 		return val, true
 	}
 	return nil, false
 }
-func (store *Store) add(key string, val []byte) {
+func (store *Store) Add(key string, val []byte) {
 	store.kv[key] = val
 }
