@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"time"
 
@@ -39,11 +40,15 @@ func main() {
 		}
 
 	*/
-	contactResponse := nodeA.LookupContact(&target)
-	fmt.Println(" DONEEEEEEEE ")
-	fmt.Println("Response: ")
-	for _, c := range contactResponse.Contacts {
-		fmt.Println(c.StringDis())
-	}
 
+	data, _ := hex.DecodeString("00000040404040404040")
+	var errors []error
+	dataToStore := Kademlia.KV{"keeey", data}
+	errors = nodeA.Store(&target, &dataToStore)
+	fmt.Println(" DONEEEEEEEE ")
+	for _, e := range errors {
+		if e != nil {
+			fmt.Println(e)
+		}
+	}
 }

@@ -68,15 +68,23 @@ func (candidates *ContactCandidates) Append(contacts []Contact) {
 }
 
 // remove an contact from the ContactCandidates
-func (candidates *ContactCandidates) RemoveContact(contact Contact) {
-	//func (n *shortList) RemoveNode(node *NetworkNode) {
-	//		for i := 0; i < n.Len(); i++ {
-	//			if bytes.Compare(n.Nodes[i].ID, node.ID) == 0 {
-	//				n.Nodes = append(n.Nodes[:i], n.Nodes[i+1:]...)
-	//				return
-	//			}
-	//		}
-	//	}
+func (candidates *ContactCandidates) RemoveContact(target Contact) {
+	fmt.Println("Removing contact: " + target.String())
+	contacts := candidates.Contacts
+	contacts = RemoveDupes(contacts)
+	var newContacts []Contact
+
+	for i := 0; i < len(contacts); i++ {
+		id := contacts[i].ID.String()
+		if id == target.ID.String() {
+			newContacts = append(contacts[:i], contacts[i+1:]...)
+			for m := 0; m < len(newContacts); m++ {
+				fmt.Println(newContacts[m].String())
+			}
+		}
+	}
+
+	*candidates = ContactCandidates{newContacts}
 
 }
 
@@ -88,7 +96,7 @@ func RemoveDupes(contacts []Contact) []Contact {
 	var unduped_slice []Contact
 	for i := 0; i < len(contacts); i++ {
 		current := contacts[i]
-		fmt.Println("current: " + current.String())
+		//fmt.Println("current: " + current.String())
 		equal := false
 		for j := i + 1; j < len(contacts); j++ {
 			//fmt.Println("comparing with: " + contacts[j].String())

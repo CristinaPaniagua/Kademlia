@@ -82,7 +82,7 @@ func TestRPCFindNode(t *testing.T) {
 
 	//Calling RPC
 	n := Network{&contactB, &contactA}
-	contactResponse := n.SendFindContactMessage(&target)
+	contactResponse, _ := n.SendFindContactMessage(&target)
 	//Priting response
 	fmt.Println("Response: ")
 	for _, c := range contactResponse.Contacts {

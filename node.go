@@ -150,9 +150,20 @@ func (node *Node) StoreKV(key string, value []byte) {
 	node.St.Add(key, value)
 }
 
-func (node *Node) RPCStoreKV(key string, value []byte, reply bool) error {
-	node.St.Add(key, value)
-	reply = true
+type KV struct {
+	Key   string
+	Value []byte
+}
+
+type StoreReply struct {
+	Ok bool
+}
+
+func (node *Node) RPCStoreKV(kv *KV, reply *StoreReply) error {
+	key := kv.Key
+	value := kv.Value
+	ok := node.St.Add(key, value)
+	*reply = StoreReply{ok}
 	return nil
 }
 

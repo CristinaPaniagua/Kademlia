@@ -22,7 +22,7 @@ func (node *Node) LookupContact(target *Contact) ContactCandidates {
 
 	//channel
 	contactChan := make(chan ContactCandidates)
-
+	removalChan := make(chan Contact)
 	//start point
 	//List for clostest contacts- need to be updated in the loop
 	contactList, err := node.FindNode(target) //first in my own bucket
@@ -59,52 +59,73 @@ func (node *Node) LookupContact(target *Contact) ContactCandidates {
 			for i := 0; i < len(nextAlpha); i++ {
 				//send  requests to alpha nodes
 				go func(ind int) {
-					timeout := false
+
 					fmt.Println("Sending message to: " + nextAlpha[ind].String())
 					n := Network{&contactMe, &nextAlpha[ind]}
-					responseList := n.SendFindContactMessage(target) //response of k closests nodes from the node i
-					fmt.Printf("Response list len= %d \n ", len(responseList.Contacts))
-					/*for m := 0; m < len(responseList.Contacts); m++ {
-						fmt.Println(responseList.Contacts[m].String() + ", distance:" + responseList.Contacts[m].distance.String())
-					}*/
+					responseList, succesfulConnection := n.SendFindContactMessage(target) //response of k closests nodes from the node i
+
 					contacted = append(contacted, nextAlpha[ind].ID.String())
-					if timeout {
-						contactList.RemoveContact(nextAlpha[ind])
+					if !succesfulConnection {
+
+						removalChan <- nextAlpha[ind]
 					} else {
+						fmt.Printf("Response list len= %d \n ", len(responseList.Contacts))
+
 						responseList.Sort() //order the list in starting with the closest
-
-						/*Index := k
-						if responseList.Len() < k {
-							Index = responseList.Len()
-						}
-						fmt.Printf("Response len: %d \n ", Index)
-						*/
 						contactChan <- responseList
-
 					}
 
 				}(i)
+
 			}
 
-			for d := 0; d < alpha; d++ {
+			for d := 0; d < len(nextAlpha); d++ {
+				fmt.Println("waiting chanel communicaiton...")
 				//reding the responses from the channel
-				r := <-contactChan
-				//update list
-				updatedCandidates = UpdateList(&updatedCandidates, &r)
-				updatedCandidates.CalDistance(*target)
-				updatedCandidates.Sort()
-				fmt.Printf("UpdatedList len= %d \n ", len(updatedCandidates.Contacts))
-				for m := 0; m < len(updatedCandidates.Contacts); m++ {
-					fmt.Println(updatedCandidates.Contacts[m].StringDis())
+
+				select {
+				case toRemove := <-removalChan:
+					contactList.RemoveContact(toRemove)
+					updatedCandidates.RemoveContact(toRemove)
+				case r := <-contactChan:
+					if r.Len() > 0 {
+						//update list
+						fmt.Println("....Updating list")
+						updatedCandidates = UpdateList(&updatedCandidates, &r)
+						updatedCandidates.CalDistance(*target)
+						updatedCandidates.Sort()
+
+					}
 				}
 
+			}
+			fmt.Printf("UpdatedList len= %d \n ", len(updatedCandidates.Contacts))
+			for m := 0; m < len(updatedCandidates.Contacts); m++ {
+				fmt.Println(updatedCandidates.Contacts[m].StringDis())
 			}
 
 			//Compare if the list of contacts hasn't changed
 			if !reflect.DeepEqual(contactList.Contacts, updatedCandidates.Contacts) {
+				fmt.Println("....List of contacts changed")
 				contactList.Contacts = updatedCandidates.Contacts
 			} else {
-				break
+				fmt.Println("....List of contacts has not changed")
+				// Check if all nodes have been contacted
+				AllSeen := false
+				for _, c := range contactList.Contacts {
+
+					AllSeen = ExistsIn(&c, contacted)
+					//fmt.Println(AllSeen)
+				}
+
+				fmt.Println("Final allseen:")
+				fmt.Println(AllSeen)
+				if AllSeen {
+					//if all have been contacted- FINISH
+					contactList.Contacts = updatedCandidates.Contacts
+					break
+				} // if not continue
+
 			}
 
 		}
@@ -118,11 +139,12 @@ func UpdateList(c1 *ContactCandidates, c2 *ContactCandidates) ContactCandidates 
 	var updated ContactCandidates
 	c1.Append(c2.Contacts)
 	contacts := RemoveDupes(c1.Contacts)
-
-	fmt.Println("after removing????")
-	for m := 0; m < len(contacts); m++ {
-		fmt.Println(contacts[m].StringDis())
-	}
+	/*
+		fmt.Println("after removing????")
+		for m := 0; m < len(contacts); m++ {
+			fmt.Println(contacts[m].StringDis())
+		}
+	*/
 	//return maximum k elements
 	Index := k
 	if len(contacts) < k {
@@ -245,16 +267,35 @@ func (node *Node) LookupData(hash string) []byte {
 }
 */
 
-func (node *Node) Store(target *Contact, data []byte) {
+func (node *Node) Store(target *Contact, kv *KV) []error {
 
 	contactMe := Contact{node.NodeID, node.IPAddress + ":" + node.Port, nil}
+	// Channels:
+	errorChan := make(chan error)
+	//store
+	node.St.Add(kv.Key, kv.Value)
 	// get k closest contacts to the key
 	contacts := node.LookupContact(target)
-	// send STORE request
-	for _, contact := range contacts.Contacts {
-		go func(contact Contact) {
+	// send STORE request to 3 of them
+	for i := 0; i < 3; i++ {
+		go func(index int) {
+			contact := contacts.Contacts[index]
 			n := Network{&contactMe, &contact}
-			n.SendStoreMessage(data)
-		}(contact)
+			var err error
+			err = nil
+			err = n.SendStoreMessage(kv.Key, kv.Value)
+			errorChan <- err
+		}(i)
 	}
+	var errors []error
+	for i := 0; i < 3; i++ {
+
+		er := <-errorChan
+		fmt.Println(er.Error())
+		if er != nil {
+			errors[i] = er
+		}
+	}
+
+	return errors
 }

@@ -17,6 +17,8 @@ func (store *Store) Get(key string) ([]byte, bool) {
 	}
 	return nil, false
 }
-func (store *Store) Add(key string, val []byte) {
+func (store *Store) Add(key string, val []byte) bool {
+
 	store.kv[key] = val
+	return true
 }
